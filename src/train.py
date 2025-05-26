@@ -11,6 +11,7 @@ from tqdm import tqdm
 import sys
 import os
 import random
+import argparse
 from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 
 # Ajouter le répertoire parent au PYTHONPATH
@@ -18,6 +19,24 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.models.gnn_model import ShortestPathGNN, create_graph_data
 from src.algorithms.traditional import Dijkstra, BellmanFord
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Train GNN for shortest path prediction')
+    parser.add_argument('--device', type=str, default='auto',
+                      choices=['auto', 'cuda', 'cpu'],
+                      help='Device to use for training (auto: use CUDA if available)')
+    parser.add_argument('--resume', action='store_true',
+                      help='Resume training from last checkpoint')
+    parser.add_argument('--batch-size', type=int, default=256,
+                      help='Batch size for training')
+    parser.add_argument('--hidden-dim', type=int, default=512,
+                      help='Hidden dimension of the GNN')
+    parser.add_argument('--num-epochs', type=int, default=1000,
+                      help='Number of training epochs')
+    parser.add_argument('--target-accuracy', type=float, default=0.85,
+                      help='Target accuracy to stop training')
+    return parser.parse_args()
 
 def generate_random_graph(n_nodes, density=0.3, difficulty='easy'):
     """
@@ -90,25 +109,30 @@ def collate_batch(batch):
     datas, srcs, tgts, dists = zip(*batch)
     return list(datas), list(srcs), list(tgts), torch.tensor(dists, dtype=torch.float32)
 
-def train_and_evaluate(resume_training=False, save_callback=None):
+def train_and_evaluate(resume_training=False, save_callback=None, device_choice='auto', batch_size=256, hidden_dim=512, num_epochs=1000, target_accuracy=0.85):
     # Configuration
     input_dim = 1  # Dimension des caractéristiques d'entrée
-    hidden_dim = 512  # Augmenté pour utiliser plus de mémoire GPU
-    learning_rate = 0.001
-    num_epochs = 1000
-    batch_size = 256  # Augmenté pour utiliser plus de mémoire GPU
-    target_accuracy = 0.85  # 85% accuracy target
+    hidden_dim = hidden_dim
+    learning_rate = 0.0005  # Reduced learning rate for more stable training
+    num_epochs = num_epochs
+    batch_size = batch_size
+    target_accuracy = target_accuracy
     
-    # Dataset parameters
-    num_graphs = 2000  # Augmenté pour plus de données
-    n_nodes = 100  # Augmenté pour des graphes plus grands
+    # Dataset parameters - adjusted for better initial training
+    num_graphs = 1000  # Reduced for faster initial training
+    n_nodes = 50  # Reduced for easier initial learning
     density = 0.3  # Graph density
-    num_pairs = 50  # Augmenté pour plus de paires source-cible
+    num_pairs = 30  # Reduced for faster training
     
-    # Vérification de CUDA
-    print(f"PyTorch version: {torch.__version__}")
-    print(f"CUDA available: {torch.cuda.is_available()}")
-    if torch.cuda.is_available():
+    # Device selection
+    if device_choice == 'auto':
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(device_choice)
+    
+    print(f"\nDevice configuration:")
+    print(f"Selected device: {device}")
+    if device.type == 'cuda':
         print(f"CUDA device: {torch.cuda.get_device_name(0)}")
         print(f"CUDA version: {torch.version.cuda}")
         # Configurer CUDA pour utiliser plus de mémoire
@@ -119,29 +143,28 @@ def train_and_evaluate(resume_training=False, save_callback=None):
     
     # Créer le modèle
     model = ShortestPathGNN(input_dim=input_dim, hidden_dim=hidden_dim)
-    
-    # Configurer CUDA
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-    print(f"\nUsing device: {device}")
     
     def print_gpu_memory():
-        if torch.cuda.is_available():
+        if device.type == 'cuda':
             allocated = torch.cuda.memory_allocated(0) / 1024**2
             reserved = torch.cuda.memory_reserved(0) / 1024**2
             print(f"GPU Memory - Allocated: {allocated:.2f} MB, Reserved: {reserved:.2f} MB")
     
     print_gpu_memory()
     
-    # Optimiseur et scheduler
-    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.01)
-    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=10, T_mult=2)
+    # Optimiseur et scheduler - adjusted for better convergence
+    optimizer = optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=0.02)  # Increased weight decay
+    scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=5, T_mult=2, eta_min=1e-6)  # Adjusted scheduler
     dist_criterion = nn.HuberLoss()  # Pour la distance
     path_criterion = nn.BCELoss()  # Pour les probabilités de chemin
     
     # Variables pour le suivi de l'entraînement
     start_epoch = 0
     best_accuracy = 0
+    best_loss = float('inf')
+    patience = 10  # Early stopping patience
+    no_improve_epochs = 0
     
     # Charger le dernier checkpoint si disponible
     if resume_training and os.path.exists("best_gnn_shortest_path.pt"):
@@ -164,11 +187,11 @@ def train_and_evaluate(resume_training=False, save_callback=None):
             if os.path.exists("best_gnn_shortest_path.pt"):
                 os.rename("best_gnn_shortest_path.pt", "best_gnn_shortest_path_old.pt")
     
-    # Créer les datasets
+    # Créer les datasets avec progression de difficulté
     print("\nCréation des datasets...")
-    easy_dataset = create_dataset(num_graphs//3, n_nodes, density, num_pairs, 'easy')
-    medium_dataset = create_dataset(num_graphs//3, n_nodes, density, num_pairs, 'medium')
-    hard_dataset = create_dataset(num_graphs//3, n_nodes, density, num_pairs, 'hard')
+    easy_dataset = create_dataset(num_graphs//2, n_nodes, density, num_pairs, 'easy')
+    medium_dataset = create_dataset(num_graphs//4, n_nodes, density, num_pairs, 'medium')
+    hard_dataset = create_dataset(num_graphs//4, n_nodes, density, num_pairs, 'hard')
     
     # Combiner les datasets
     dataset = easy_dataset + medium_dataset + hard_dataset
@@ -227,10 +250,13 @@ def train_and_evaluate(resume_training=False, save_callback=None):
                 
                 path_loss = path_criterion(path_probs, path_labels)
                 
-                # Perte totale
-                loss = dist_loss + path_loss
+                # Perte totale avec pondération
+                loss = dist_loss + 0.5 * path_loss  # Reduced path loss weight
                 loss.backward()
                 batch_loss += loss.item()
+            
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
             optimizer.step()
             total_loss += batch_loss
@@ -246,6 +272,17 @@ def train_and_evaluate(resume_training=False, save_callback=None):
         avg_loss = total_loss / len(train_set)
         print(f"\nEpoch {epoch+1}/{num_epochs} - Loss: {avg_loss:.4f}")
         print_gpu_memory()
+        
+        # Early stopping check
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            no_improve_epochs = 0
+        else:
+            no_improve_epochs += 1
+            
+        if no_improve_epochs >= patience:
+            print(f"\nEarly stopping triggered after {epoch + 1} epochs")
+            break
         
         # Évaluation sur le validation set
         model.eval()
@@ -350,10 +387,18 @@ def train_and_evaluate(resume_training=False, save_callback=None):
     print(f"Temps moyen Dijkstra: {np.mean(dijkstra_times):.6f}s")
     print(f"Temps moyen Bellman-Ford: {np.mean(bf_times):.6f}s")
     
-    if torch.cuda.is_available():
+    if device.type == 'cuda':
         print(f"\nGPU Memory final:")
         print(f"Allocated: {torch.cuda.memory_allocated(0) / 1024**2:.2f} MB")
         print(f"Cached: {torch.cuda.memory_reserved(0) / 1024**2:.2f} MB")
 
 if __name__ == "__main__":
-    train_and_evaluate(resume_training=True) 
+    args = parse_args()
+    train_and_evaluate(
+        resume_training=args.resume,
+        device_choice=args.device,
+        batch_size=args.batch_size,
+        hidden_dim=args.hidden_dim,
+        num_epochs=args.num_epochs,
+        target_accuracy=args.target_accuracy
+    ) 

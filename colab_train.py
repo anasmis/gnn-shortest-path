@@ -7,8 +7,27 @@ import os
 import sys
 import subprocess
 import torch
+import argparse
 from google.colab import drive
 from src.train import train_and_evaluate
+
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description='Train GNN for shortest path prediction in Colab')
+    parser.add_argument('--device', type=str, default='auto',
+                      choices=['auto', 'cuda', 'cpu'],
+                      help='Device to use for training (auto: use CUDA if available)')
+    parser.add_argument('--resume', action='store_true',
+                      help='Resume training from last checkpoint')
+    parser.add_argument('--batch-size', type=int, default=256,
+                      help='Batch size for training')
+    parser.add_argument('--hidden-dim', type=int, default=512,
+                      help='Hidden dimension of the GNN')
+    parser.add_argument('--num-epochs', type=int, default=1000,
+                      help='Number of training epochs')
+    parser.add_argument('--target-accuracy', type=float, default=0.85,
+                      help='Target accuracy to stop training')
+    return parser.parse_args()
 
 def mount_google_drive():
     """Mount Google Drive and create necessary directories."""
@@ -73,6 +92,9 @@ def save_model_callback(model, optimizer, epoch, accuracy, path_accuracy, avg_er
 
 def main():
     """Main function to run the training process."""
+    # Parse command line arguments
+    args = parse_args()
+    
     # Setup environment
     setup_environment()
     
@@ -81,7 +103,15 @@ def main():
     
     # Run training with save callback
     print("Starting training...")
-    train_and_evaluate(resume_training=False, save_callback=save_model_callback)
+    train_and_evaluate(
+        resume_training=args.resume,
+        save_callback=save_model_callback,
+        device_choice=args.device,
+        batch_size=args.batch_size,
+        hidden_dim=args.hidden_dim,
+        num_epochs=args.num_epochs,
+        target_accuracy=args.target_accuracy
+    )
     
     print("Training completed!")
     print(f"Model checkpoints saved in: {model_dir}")
