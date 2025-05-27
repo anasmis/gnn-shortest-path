@@ -80,11 +80,11 @@ Le projet inclut une comparaison entre le GNN et les algorithmes classiques de r
 
 ## Visualisations
 
-![Comparaison Dijkstra vs GNN](images/graph_comparaison_1.png)
+![Comparaison Dijkstra vs GNN](images/graph_comparison_1.png)
 
-![Comparaison Dijkstra vs GNN](images/graph_comparaison_2.png)
+![Comparaison Dijkstra vs GNN](images/graph_comparison_2.png)
 
-![Comparaison Dijkstra vs GNN](images/graph_comparaison_3.png)
+![Comparaison Dijkstra vs GNN](images/graph_comparison_3.png)
 
 *Comparaison de la performance entre Dijkstra et le GNN*
 
