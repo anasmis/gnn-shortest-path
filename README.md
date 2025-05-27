@@ -63,13 +63,13 @@ python src/train.py --epochs 100 --batch_size 32
 ### Évaluation du Modèle
 
 ```bash
-python src/evaluate.py --model_path best_gnn_shortest_path.pt
+python testing.py --model_path best_gnn_shortest_path.pt
 ```
 
 ### Visualisation des Résultats
 
 ```bash
-python src/visualize.py --model_path best_gnn_shortest_path.pt
+python example_script.py
 ```
 
 ## Comparaison avec les Algorithmes Classiques
@@ -77,7 +77,6 @@ python src/visualize.py --model_path best_gnn_shortest_path.pt
 Le projet inclut une comparaison entre le GNN et les algorithmes classiques de recherche de chemin le plus court :
 
 * **Dijkstra** : Pour graphes pondérés sans poids négatifs.
-* **Bellman-Ford** : Capable de gérer des arêtes à poids négatifs.
 
 ## Contributions
 
