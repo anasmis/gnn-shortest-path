@@ -63,13 +63,13 @@ python src/train.py --epochs 100 --batch_size 32
 ### Évaluation du Modèle
 
 ```bash
-python src/evaluate.py --model_path models/gnn_model.pth
+python src/evaluate.py --model_path best_gnn_shortest_path.pt
 ```
 
 ### Visualisation des Résultats
 
 ```bash
-python src/visualize.py --model_path models/gnn_model.pth
+python src/visualize.py --model_path best_gnn_shortest_path.pt
 ```
 
 ## Comparaison avec les Algorithmes Classiques
