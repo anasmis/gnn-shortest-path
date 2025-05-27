@@ -1,6 +1,6 @@
 # Résolveur de Chemin le Plus Court avec Réseaux de Neurones Graphiques (GNN)
 
-**Auteur :** Anas Misbah
+**Auteur :** Anas AIT ALI
 
 ## Présentation
 
