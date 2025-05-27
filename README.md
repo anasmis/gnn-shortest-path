@@ -78,7 +78,20 @@ Le projet inclut une comparaison entre le GNN et les algorithmes classiques de r
 
 * **Dijkstra** : Pour graphes pondérés sans poids négatifs.
 
-## Contributions
+## Visualisations
+
+![Comparaison Dijkstra vs GNN](images/graph_comparaison_1.png)
+
+![Comparaison Dijkstra vs GNN](images/graph_comparaison_2.png)
+
+![Comparaison Dijkstra vs GNN](images/graph_comparaison_3.png)
+
+*Comparaison de la performance entre Dijkstra et le GNN*
+
+
+![Courbes de perte et précision pendant l'entraînement](images/performance_summary.png)
+
+* ## Contributions
 
 Les contributions sont les bienvenues !
 
