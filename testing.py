@@ -119,24 +119,25 @@ class GraphPathVisualizer:
     
     def predict_gnn_path(self, adj_matrix, src, tgt, threshold=0.3):
         """
-        Prédit le chemin avec le modèle GNN.
+        Predicts the path with GNN and computes the actual sum of edge weights.
         
         Args:
-            adj_matrix: Matrice d'adjacence
-            src: Nœud source
-            tgt: Nœud cible
-            threshold: Seuil pour la prédiction du chemin
-            
+            adj_matrix: Adjacency matrix (n_nodes x n_nodes)
+            src: Source node
+            tgt: Target node
+            threshold: Probability threshold for path nodes
+        
         Returns:
-            tuple: (chemin, distance, temps_execution)
+            tuple: (path, actual_path_distance, execution_time)
         """
         if self.model is None:
-            return [], float('inf'), 0
-        
+            return [], float('inf'), 0.0
+
         start_time = time.time()
+        n_nodes = adj_matrix.size(0)
         
         try:
-            n_nodes = adj_matrix.size(0)
+            # Forward pass: Get GNN predictions
             node_features = torch.ones(n_nodes, 1)
             pos_encoding = self.create_position_encoding(n_nodes, src, tgt)
             data = create_graph_data(adj_matrix, node_features, pos_encoding)
@@ -145,28 +146,32 @@ class GraphPathVisualizer:
             with torch.no_grad():
                 path_probs, pred_distances = self.model(data)
                 
-                # Obtenir la distance prédite pour le nœud cible
-                predicted_distance = pred_distances[tgt].item()
-                
-                # Reconstruire le chemin à partir des probabilités
+                # Reconstruct path from probabilities
                 path_nodes = torch.where(path_probs > threshold)[0].tolist()
-                
                 if src not in path_nodes:
                     path_nodes.append(src)
                 if tgt not in path_nodes:
                     path_nodes.append(tgt)
                 
-                # Reconstruire le chemin en utilisant les probabilités
                 path = self.reconstruct_path_from_probs(
                     path_probs, data.edge_index, src, tgt, path_nodes
                 )
                 
+                # Compute ACTUAL distance by summing edge weights along the path
+                actual_distance = 0.0
+                if len(path) > 1:
+                    for i in range(len(path) - 1):
+                        u, v = path[i], path[i + 1]
+                        actual_distance += adj_matrix[u, v].item()
+                else:
+                    actual_distance = float('inf')  # No valid path
+                
         except Exception as e:
-            print(f"❌ Erreur GNN: {e}")
-            path, predicted_distance = [], float('inf')
+            print(f"❌ GNN Error: {e}")
+            path, actual_distance = [], float('inf')
         
         execution_time = time.time() - start_time
-        return path, predicted_distance, execution_time
+        return path, actual_distance, execution_time
     
     def reconstruct_path_from_probs(self, path_probs, edge_index, src, tgt, candidate_nodes):
         """Reconstruit le chemin à partir des probabilités."""
@@ -397,7 +402,7 @@ def main():
     
     # Configuration des graphes de test
     test_configs = [
-        {'n_nodes': random.randint(10, 20), 'density': 0.001*random.randint(1, 150), 'seed': random.randint(1, 1000)} for _ in range(10)
+        {'n_nodes': random.randint(30, 50), 'density': 0.01*random.randint(3, 12), 'seed': random.randint(1, 100000)} for _ in range(500)
     ]
     
     print(f"📈 Test sur {len(test_configs)} graphes différents\n")
@@ -417,7 +422,7 @@ def main():
         results = visualizer.compare_paths(i, adj_matrix, adj_dict, src, tgt, pos_layout)
         
         # Visualiser la comparaison
-        visualizer.visualize_graph_comparison(results, adj_matrix, pos_layout)
+        #visualizer.visualize_graph_comparison(results, adj_matrix, pos_layout)
         
         print()
     
