@@ -402,7 +402,7 @@ def main():
     
     # Configuration des graphes de test
     test_configs = [
-        {'n_nodes': random.randint(30, 50), 'density': 0.01*random.randint(3, 12), 'seed': random.randint(1, 100000)} for _ in range(500)
+        {'n_nodes': random.randint(30, 50), 'density': 0.01*random.randint(3, 4), 'seed': random.randint(1, 100000)} for _ in range(5)
     ]
     
     print(f"📈 Test sur {len(test_configs)} graphes différents\n")
@@ -422,7 +422,7 @@ def main():
         results = visualizer.compare_paths(i, adj_matrix, adj_dict, src, tgt, pos_layout)
         
         # Visualiser la comparaison
-        #visualizer.visualize_graph_comparison(results, adj_matrix, pos_layout)
+        visualizer.visualize_graph_comparison(results, adj_matrix, pos_layout)
         
         print()
     

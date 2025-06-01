@@ -112,7 +112,7 @@ def train_and_evaluate_fast(resume_training=False, save_callback=None, device_ch
     # Paramètres de dataset réduits
     num_graphs = 1000  # Très réduit
     n_nodes = 30      # Très réduit
-    density = 0.4     # Densité élevée
+    density = 0.15     # Densité 
     num_pairs = 10     # Très réduit
     
     # Device selection
@@ -138,7 +138,7 @@ def train_and_evaluate_fast(resume_training=False, save_callback=None, device_ch
     # Variables pour le suivi
     start_epoch = 0
     best_accuracy = 0
-    patience = 40  # Patience réduite
+    patience = 10  # Patience réduite
     no_improve_epochs = 0
     
     # Charger le checkpoint si disponible
@@ -222,7 +222,13 @@ def train_and_evaluate_fast(resume_training=False, save_callback=None, device_ch
                 try:
                     data = data.to(device)
                     path_probs, pred_dist = model(data)
-                    pred = pred_dist[tgt].item()
+                    pred = 0.0
+                    if len(path) > 1:
+                        for i in range(len(path) - 1):
+                            u, v = path[i], path[i + 1]
+                            pred += adj_matrix[u, v].item()
+                    else:
+                        pred = float('inf')  # No valid path
                     
                     # Tolérance plus large pour convergence rapide
                     if abs(pred - dist) / max(dist, 1e-6) < 0.15:  # 15% de tolérance
