@@ -95,16 +95,6 @@ Le projet inclut une comparaison entre le GNN et les algorithmes classiques de r
 
 Les contributions sont les bienvenues !
 
-1. Forkez le dépôt.
-2. Créez une branche (`git checkout -b fonctionnalite`).
-3. Commitez vos modifications (`git commit -am "Ajout d'une fonctionnalité"`).
-4. Poussez la branche (`git push origin fonctionnalite`).
-5. Ouvrez une Pull Request.
-
-## Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus d'informations.
-
 ---
 
 Pour toute question, suggestion ou retour, vous pouvez me contacter directement via GitHub.
